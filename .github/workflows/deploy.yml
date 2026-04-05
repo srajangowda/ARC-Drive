@@ -70,21 +70,18 @@ jobs:
         run: |
           # Strip any random invisible spaces or newlines pasted into GitHub Secrets
           EC2_HOST=$(echo "${{ secrets.EC2_HOST }}" | tr -d ' \r\n')
-          EC2_USER=$(echo "${{ secrets.EC2_USERNAME }}" | tr -d ' \r\n')
-          EC2_DIR=$(echo "${{ secrets.EC2_TARGET_DIR }}" | tr -d ' \r\n')
           
           rsync -avz --delete \
             -e "ssh -o StrictHostKeyChecking=no" \
             dist/ \
-            ${EC2_USER}@${EC2_HOST}:${EC2_DIR}/
+            ubuntu@${EC2_HOST}:/var/www/frontend/
 
       - name: Reload Nginx
         run: |
           EC2_HOST=$(echo "${{ secrets.EC2_HOST }}" | tr -d ' \r\n')
-          EC2_USER=$(echo "${{ secrets.EC2_USERNAME }}" | tr -d ' \r\n')
 
           ssh -o StrictHostKeyChecking=no \
-            ${EC2_USER}@${EC2_HOST} \
+            ubuntu@${EC2_HOST} \
             "sudo systemctl reload nginx"
 
       - name: Deployment Success
