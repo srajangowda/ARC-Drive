@@ -63,9 +63,6 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Add EC2 to known hosts
-        run: ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-
       - name: Deploy files to EC2 via rsync
         run: |
           rsync -avz --delete \
