@@ -68,20 +68,21 @@ jobs:
 
       - name: Deploy files to EC2 via rsync
         run: |
-          # Strip any random invisible spaces or newlines pasted into GitHub Secrets
           EC2_HOST=$(echo "${{ secrets.EC2_HOST }}" | tr -d ' \r\n')
+          EC2_USER=$(echo "${{ secrets.EC2_USER }}" | tr -d ' \r\n')
           
           rsync -avz --delete \
             -e "ssh -o StrictHostKeyChecking=no" \
             dist/ \
-            ubuntu@${EC2_HOST}:/var/www/frontend/
+            ${EC2_USER}@${EC2_HOST}:/var/www/html/
 
       - name: Reload Nginx
         run: |
           EC2_HOST=$(echo "${{ secrets.EC2_HOST }}" | tr -d ' \r\n')
+          EC2_USER=$(echo "${{ secrets.EC2_USER }}" | tr -d ' \r\n')
 
           ssh -o StrictHostKeyChecking=no \
-            ubuntu@${EC2_HOST} \
+            ${EC2_USER}@${EC2_HOST} \
             "sudo systemctl reload nginx"
 
       - name: Deployment Success
