@@ -66,19 +66,6 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Debug SSH Connection
-        run: |
-          ssh -vvv -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "echo EC2_REACHABLE" > ssh_debug.log 2>&1 || true
-
-      - name: Push SSH Debug Log
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -b debug-logs
-          git add ssh_debug.log
-          git commit -m "Add ssh debug log" || echo "No changes"
-          git push -f origin debug-logs
-
       - name: Deploy files to EC2 via rsync
         run: |
           rsync -avz --delete \
