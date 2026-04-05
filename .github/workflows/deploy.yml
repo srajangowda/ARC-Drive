@@ -63,6 +63,16 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
+      - name: Debug SSH Connection
+        run: |
+          ssh -vvv -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} "echo EC2_REACHABLE" > ssh_debug.log 2>&1 || true
+
+      - name: Upload SSH Debug Log
+        uses: actions/upload-artifact@v4
+        with:
+          name: ssh-debug-log
+          path: ssh_debug.log
+
       - name: Deploy files to EC2 via rsync
         run: |
           rsync -avz --delete \
