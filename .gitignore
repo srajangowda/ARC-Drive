@@ -14,3 +14,23 @@ yarn-error.log*
 build_output.txt
 build_output2.txt
 vite.log
+
+# AWS and Security
+*.pem
+*.key
+aws-credentials
+.aws/
+
+# Deployment
+deployment.log
+*.tar.gz
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+ehthumbs.db
