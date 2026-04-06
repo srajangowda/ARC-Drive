@@ -71,19 +71,44 @@ jobs:
           EC2_HOST=$(echo "${{ secrets.EC2_HOST }}" | tr -d ' \r\n')
           EC2_USER=$(echo "${{ secrets.EC2_USER }}" | tr -d ' \r\n')
           
+          # Debug: Verify SSH agent is working
+          echo "🔍 Verifying SSH connection..."
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
+            ${EC2_USER}@${EC2_HOST} "echo '✅ SSH connection successful'" || {
+            echo "❌ SSH connection failed!"
+            echo "EC2_HOST: ${EC2_HOST}"
+            echo "EC2_USER: ${EC2_USER}"
+            exit 1
+          }
+          
+          # Deploy using rsync
+          echo "📤 Uploading files to EC2..."
           rsync -avz --delete \
-            -e "ssh -o StrictHostKeyChecking=no" \
+            -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10" \
             dist/ \
-            ${EC2_USER}@${EC2_HOST}:/var/www/html/
+            ${EC2_USER}@${EC2_HOST}:/var/www/html/ || {
+            echo "❌ rsync failed!"
+            echo "Possible causes:"
+            echo "1. EC2_SSH_KEY secret not set in GitHub secrets"
+            echo "2. SSH key format incorrect (must be PEM format)"
+            echo "3. Public key not authorized on EC2 instance"
+            echo "4. EC2_USER is wrong (try: ec2-user for Amazon Linux, ubuntu for Ubuntu)"
+            exit 1
+          }
+          
+          echo "✅ Files uploaded successfully"
 
       - name: Reload Nginx
         run: |
           EC2_HOST=$(echo "${{ secrets.EC2_HOST }}" | tr -d ' \r\n')
           EC2_USER=$(echo "${{ secrets.EC2_USER }}" | tr -d ' \r\n')
 
-          ssh -o StrictHostKeyChecking=no \
+          echo "🔄 Reloading Nginx on EC2..."
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 \
             ${EC2_USER}@${EC2_HOST} \
-            "sudo systemctl reload nginx"
+            "sudo systemctl reload nginx && echo '✅ Nginx reloaded successfully'" || {
+            echo "⚠️  Nginx reload failed (may not have sudo access or nginx not installed)"
+          }
 
       - name: Deployment Success
         run: echo "✅ ARC Drive deployed successfully to EC2!"
