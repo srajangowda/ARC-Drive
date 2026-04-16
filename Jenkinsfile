@@ -83,14 +83,21 @@ pipeline {
                     
                     if (!hasCredentials) {
                         echo 'Deploying locally for testing...'
-                        sh """
-                            docker stop arc-drive-local || true
-                            docker rm arc-drive-local || true
-                            docker run -d --name arc-drive-local -p 8080:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
-                        """
-                        echo '✅ Local deployment successful!'
-                        echo '🌐 Application available at: http://localhost:8080'
-                        echo '⚠️  Add EC2 credentials for production deployment'
+                        script {
+                            // Kill any process using port 3000
+                            sh "lsof -ti:3000 | xargs kill -9 || true"
+                            
+                            // Stop and remove existing container
+                            sh "docker stop arc-drive-local || true"
+                            sh "docker rm arc-drive-local || true"
+                            
+                            // Deploy on port 3000
+                            sh "docker run -d --name arc-drive-local -p 3000:80 ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                            
+                            echo '✅ Local deployment successful!'
+                            echo '🌐 Application available at: http://localhost:3000'
+                            echo '⚠️  Add EC2 credentials for production deployment'
+                        }
                     }
                 }
             }
