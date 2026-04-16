@@ -86,7 +86,7 @@ export default function Home() {
                     <span className="w-2 h-2 rounded-full bg-cyber-neon animate-pulse"></span> Next Gen Hardware Security
                 </div>
                 <h1 className="text-5xl md:text-7xl font-heading font-extrabold text-white leading-tight">
-                    Your Data.ARC-DRIVE <br/>
+                    Your Data. <br/>
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyber-neon to-cyber-accent">Never Out Of Control.</span>
                 </h1>
                 <p className="text-lg md:text-xl text-gray-400 max-w-lg font-light">
