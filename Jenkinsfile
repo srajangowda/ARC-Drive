@@ -48,68 +48,50 @@ pipeline {
         }
         
         stage('Deploy to EC2') {
-            when {
-                expression {
-                    try {
-                        env.EC2_HOST = credentials('ec2-host')
-                        env.EC2_SSH_KEY = credentials('ec2-ssh-key')
-                        return true
-                    } catch (Exception e) {
-                        echo "EC2 credentials not found: ${e.message}"
-                        return false
-                    }
-                }
-            }
-            environment {
-                EC2_HOST = credentials('ec2-host')
-                SSH_KEY = credentials('ec2-ssh-key')
-            }
             steps {
-                echo 'Deploying to EC2...'
                 script {
-                    // Save Docker image as tar file
-                    sh "docker save ${DOCKER_IMAGE}:${DOCKER_TAG} -o arc-drive-${DOCKER_TAG}.tar"
+                    def hasCredentials = false
+                    try {
+                        withCredentials([string(credentialsId: 'ec2-host', variable: 'EC2_HOST'),
+                                       sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER')]) {
+                            echo 'EC2 credentials found - deploying to EC2...'
+                            hasCredentials = true
+                            
+                            // Save Docker image as tar file
+                            sh "docker save ${DOCKER_IMAGE}:${DOCKER_TAG} -o arc-drive-${DOCKER_TAG}.tar"
+                            
+                            // Copy image to EC2 and deploy
+                            sh """
+                                scp -i ${SSH_KEY} -o StrictHostKeyChecking=no arc-drive-${DOCKER_TAG}.tar ubuntu@${EC2_HOST}:/tmp/
+                                ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} '
+                                    docker stop arc-drive-app || true
+                                    docker rm arc-drive-app || true
+                                    docker load < /tmp/arc-drive-${DOCKER_TAG}.tar
+                                    docker run -d --name arc-drive-app -p 80:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                                    rm /tmp/arc-drive-${DOCKER_TAG}.tar
+                                    docker image prune -f
+                                '
+                            """
+                            
+                            echo '✅ EC2 deployment successful!'
+                            echo "🌐 Application deployed at: http://${EC2_HOST}"
+                        }
+                    } catch (Exception e) {
+                        echo 'EC2 credentials not configured - running local test...'
+                        hasCredentials = false
+                    }
                     
-                    // Copy image to EC2 and deploy
-                    sshagent([env.SSH_KEY]) {
+                    if (!hasCredentials) {
+                        echo 'Deploying locally for testing...'
                         sh """
-                            scp -o StrictHostKeyChecking=no arc-drive-${DOCKER_TAG}.tar ubuntu@${env.EC2_HOST}:/tmp/
-                            ssh -o StrictHostKeyChecking=no ubuntu@${env.EC2_HOST} '
-                                docker stop arc-drive-app || true
-                                docker rm arc-drive-app || true
-                                docker load < /tmp/arc-drive-${DOCKER_TAG}.tar
-                                docker run -d --name arc-drive-app -p 80:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
-                                rm /tmp/arc-drive-${DOCKER_TAG}.tar
-                                docker image prune -f
-                            '
+                            docker stop arc-drive-local || true
+                            docker rm arc-drive-local || true
+                            docker run -d --name arc-drive-local -p 8080:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
                         """
+                        echo '✅ Local deployment successful!'
+                        echo '🌐 Application available at: http://localhost:8080'
+                        echo '⚠️  Add EC2 credentials for production deployment'
                     }
-                }
-            }
-        }
-        
-        stage('Local Test Deploy') {
-            when {
-                expression {
-                    try {
-                        credentials('ec2-host')
-                        credentials('ec2-ssh-key')
-                        return false
-                    } catch (Exception e) {
-                        return true
-                    }
-                }
-            }
-            steps {
-                echo 'EC2 credentials not configured - running local test...'
-                script {
-                    sh """
-                        docker stop arc-drive-local || true
-                        docker rm arc-drive-local || true
-                        docker run -d --name arc-drive-local -p 8080:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
-                    """
-                    echo '✅ Local deployment successful!'
-                    echo '🌐 Application available at: http://localhost:8080'
                 }
             }
         }
@@ -129,17 +111,8 @@ pipeline {
             }
         }
         success {
-            script {
-                try {
-                    def ec2Host = credentials('ec2-host')
-                    echo "🎉 Pipeline completed successfully!"
-                    echo "🌐 Application deployed at: http://${ec2Host}"
-                } catch (Exception e) {
-                    echo "🎉 Pipeline completed successfully!"
-                    echo "🌐 Local test available at: http://localhost:8080"
-                    echo "⚠️  Add EC2 credentials for production deployment"
-                }
-            }
+            echo "🎉 Pipeline completed successfully!"
+            echo "🚀 Your CI/CD pipeline is working!"
         }
         failure {
             echo '❌ Pipeline failed!'
