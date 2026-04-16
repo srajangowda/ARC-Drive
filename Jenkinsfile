@@ -14,11 +14,35 @@ pipeline {
             }
         }
         
+        stage('Check Docker Access') {
+            steps {
+                echo 'Checking Docker daemon access...'
+                script {
+                    try {
+                        sh 'docker --version'
+                        sh 'docker info'
+                        echo '✅ Docker access confirmed'
+                    } catch (Exception e) {
+                        echo '❌ Docker access failed!'
+                        echo 'Run: sudo usermod -aG docker jenkins && sudo systemctl restart jenkins'
+                        error('Docker permission denied. Please run jenkins-docker-setup.sh')
+                    }
+                }
+            }
+        }
+        
         stage('Build Docker Image') {
             steps {
                 echo 'Building Docker image...'
                 script {
-                    sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+                    try {
+                        sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+                        echo '✅ Docker image built successfully'
+                    } catch (Exception e) {
+                        echo '❌ Docker build failed!'
+                        echo 'Error: ' + e.getMessage()
+                        error('Docker build failed. Check Docker permissions.')
+                    }
                 }
             }
         }
@@ -84,8 +108,9 @@ pipeline {
                         docker rm arc-drive-local || true
                         docker run -d --name arc-drive-local -p 8080:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
                     """
+                    echo '✅ Local deployment successful!'
+                    echo '🌐 Application available at: http://localhost:8080'
                 }
-                echo 'Local test deployment completed at http://localhost:8080'
             }
         }
     }
@@ -95,25 +120,33 @@ pipeline {
             echo 'Cleaning up...'
             script {
                 sh "rm -f arc-drive-*.tar || true"
-                sh "docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} || true"
+                // Only cleanup if Docker is accessible
+                try {
+                    sh "docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} || true"
+                } catch (Exception e) {
+                    echo 'Skipping Docker cleanup due to permission issues'
+                }
             }
         }
         success {
             script {
                 try {
                     def ec2Host = credentials('ec2-host')
-                    echo "✅ Pipeline completed successfully!"
-                    echo "Application deployed at: http://${ec2Host}"
+                    echo "🎉 Pipeline completed successfully!"
+                    echo "🌐 Application deployed at: http://${ec2Host}"
                 } catch (Exception e) {
-                    echo "✅ Pipeline completed successfully!"
-                    echo "Local test available at: http://localhost:8080"
-                    echo "⚠️  Configure EC2 credentials for production deployment"
+                    echo "🎉 Pipeline completed successfully!"
+                    echo "🌐 Local test available at: http://localhost:8080"
+                    echo "⚠️  Add EC2 credentials for production deployment"
                 }
             }
         }
         failure {
             echo '❌ Pipeline failed!'
-            echo 'Check the logs above for details'
+            echo '📋 Troubleshooting steps:'
+            echo '1. Run: ./jenkins-docker-setup.sh'
+            echo '2. Restart Jenkins: sudo systemctl restart jenkins'
+            echo '3. Try the pipeline again'
         }
     }
 }
