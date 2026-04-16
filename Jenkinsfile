@@ -18,7 +18,7 @@ pipeline {
             steps {
                 echo 'Building Docker image...'
                 script {
-                    bat "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
+                    sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ."
                 }
             }
         }
@@ -26,7 +26,14 @@ pipeline {
         stage('Deploy to EC2') {
             when {
                 expression {
-                    return env.EC2_HOST && env.EC2_SSH_KEY
+                    try {
+                        env.EC2_HOST = credentials('ec2-host')
+                        env.EC2_SSH_KEY = credentials('ec2-ssh-key')
+                        return true
+                    } catch (Exception e) {
+                        echo "EC2 credentials not found: ${e.message}"
+                        return false
+                    }
                 }
             }
             environment {
@@ -37,36 +44,42 @@ pipeline {
                 echo 'Deploying to EC2...'
                 script {
                     // Save Docker image as tar file
-                    bat "docker save ${DOCKER_IMAGE}:${DOCKER_TAG} -o arc-drive-${DOCKER_TAG}.tar"
+                    sh "docker save ${DOCKER_IMAGE}:${DOCKER_TAG} -o arc-drive-${DOCKER_TAG}.tar"
                     
                     // Copy image to EC2 and deploy
-                    bat """
-                        scp -i %SSH_KEY% -o StrictHostKeyChecking=no arc-drive-${DOCKER_TAG}.tar ubuntu@%EC2_HOST%:/tmp/
-                        ssh -i %SSH_KEY% -o StrictHostKeyChecking=no ubuntu@%EC2_HOST% "
-                            docker stop arc-drive-app || true &&
-                            docker rm arc-drive-app || true &&
-                            docker load < /tmp/arc-drive-${DOCKER_TAG}.tar &&
-                            docker run -d --name arc-drive-app -p 80:80 ${DOCKER_IMAGE}:${DOCKER_TAG} &&
-                            rm /tmp/arc-drive-${DOCKER_TAG}.tar &&
-                            docker image prune -f
-                        "
-                    """
+                    sshagent([env.SSH_KEY]) {
+                        sh """
+                            scp -o StrictHostKeyChecking=no arc-drive-${DOCKER_TAG}.tar ubuntu@${env.EC2_HOST}:/tmp/
+                            ssh -o StrictHostKeyChecking=no ubuntu@${env.EC2_HOST} '
+                                docker stop arc-drive-app || true
+                                docker rm arc-drive-app || true
+                                docker load < /tmp/arc-drive-${DOCKER_TAG}.tar
+                                docker run -d --name arc-drive-app -p 80:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
+                                rm /tmp/arc-drive-${DOCKER_TAG}.tar
+                                docker image prune -f
+                            '
+                        """
+                    }
                 }
             }
         }
         
         stage('Local Test Deploy') {
             when {
-                not {
-                    expression {
-                        return env.EC2_HOST && env.EC2_SSH_KEY
+                expression {
+                    try {
+                        credentials('ec2-host')
+                        credentials('ec2-ssh-key')
+                        return false
+                    } catch (Exception e) {
+                        return true
                     }
                 }
             }
             steps {
                 echo 'EC2 credentials not configured - running local test...'
                 script {
-                    bat """
+                    sh """
                         docker stop arc-drive-local || true
                         docker rm arc-drive-local || true
                         docker run -d --name arc-drive-local -p 8080:80 ${DOCKER_IMAGE}:${DOCKER_TAG}
@@ -81,16 +94,17 @@ pipeline {
         always {
             echo 'Cleaning up...'
             script {
-                bat "if exist arc-drive-*.tar del arc-drive-*.tar"
-                bat "docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} || true"
+                sh "rm -f arc-drive-*.tar || true"
+                sh "docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} || true"
             }
         }
         success {
             script {
-                if (env.EC2_HOST) {
+                try {
+                    def ec2Host = credentials('ec2-host')
                     echo "✅ Pipeline completed successfully!"
-                    echo "Application deployed at: http://${env.EC2_HOST}"
-                } else {
+                    echo "Application deployed at: http://${ec2Host}"
+                } catch (Exception e) {
                     echo "✅ Pipeline completed successfully!"
                     echo "Local test available at: http://localhost:8080"
                     echo "⚠️  Configure EC2 credentials for production deployment"
