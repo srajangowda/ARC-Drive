@@ -86,11 +86,11 @@ export default function Home() {
                     <span className="w-2 h-2 rounded-full bg-cyber-neon animate-pulse"></span> Next Gen Hardware Security
                 </div>
                 <h1 className="text-5xl md:text-7xl font-heading font-extrabold text-white leading-tight">
-                    My Data. <br/>
+                    Your Data. <br/>
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyber-neon to-cyber-accent">Never Out Of Control.</span>
                 </h1>
                 <p className="text-lg md:text-xl text-gray-400 max-w-lg font-light">
-                    The world's first and only hardware-enforced secure USB with behavioral protection. Military-grade encryption meets algorithmic access policies.
+                    The world's first hardware-enforced secure USB with behavioral protection. Military-grade encryption meets algorithmic access policies.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 pt-4">
                     <Link to="/purchase" className="px-8 py-4 bg-cyber-neon text-black font-bold rounded hover:bg-white transition-all shadow-[0_0_20px_rgba(0,240,255,0.3)] hover:shadow-[0_0_30px_rgba(0,240,255,0.6)] flex items-center justify-center gap-2">
