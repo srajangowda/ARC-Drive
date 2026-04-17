@@ -10,7 +10,7 @@ export default function Purchase() {
   const navigate = useNavigate();
 
   const prices = {
-    '128GB': 3800
+    '128GB': 5000
   };
 
   const currentPrice = prices[capacity];
