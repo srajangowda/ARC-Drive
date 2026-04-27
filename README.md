@@ -1,4 +1,6 @@
-# ARC Drive - CI/CD Pipeline
+# ARC Drive - CI/CD Pipeline for team7
+# team members
+SAMRUDH
 
 Automated deployment pipeline: **GitHub → Jenkins → Docker → AWS EC2**
 
