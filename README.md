@@ -1,6 +1,8 @@
 # ARC Drive - CI/CD Pipeline for team7
 # team members
 SAMRUDH
+Varun B S
+Srajan Gowda
 
 Automated deployment pipeline: **GitHub → Jenkins → Docker → AWS EC2**
 
