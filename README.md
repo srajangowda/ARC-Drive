@@ -3,6 +3,7 @@
 SAMRUDH
 Varun B S
 Srajan Gowda
+Rajath S D
 
 Automated deployment pipeline: **GitHub → Jenkins → Docker → AWS EC2**
 
